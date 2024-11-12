@@ -1,0 +1,42 @@
+version: '3.6'
+services:
+  mysql:
+    container_name: mysql  #コンテナの名前を指定
+    image: mysql:8.0  # MySQLのバージョンを指定
+    build: ../docker/mysql  #DockerイメージをビルドするためのDockerfileの場所
+    environment:
+      MYSQL_DATABASE: mysqldb  #データベース名を指定
+      MYSQL_USER: user  #データベースユーザー名を指定
+      MYSQL_PASSWORD: password  #データベースユーザーのパスワードを指定
+      MYSQL_ROOT_PASSWORD: rootpassword  #MySQLのルートユーザーのパスワードを指定
+    ports:
+      - 3306:3306  #ホストのポート3306をコンテナのポート3306に指定
+    volumes:
+      - ./mysql/initdb:/docker-entrypoint-initdb.d  #ローカルのディレクトリをコンテナ内のディレクトリにマウントする
+                                                    #初期化用のSQLスクリプトが置かれる
+      - mysql_db:/var/lib/mysql  #Dockerボリュームをコンテナ内のディレクトリにマウントする
+                                  #MySQLのデータが保持され、コンテナが再起動されてもデータが残る
+  backend:
+    container_name: backend  ##コンテナの名前を指定
+    build: ./spring  #DockerイメージをビルドするためのDockerfileの場所
+    depends_on:
+      - mysql  #mysqlに依存し、それが起動している必要があることを示している
+    ports:
+      - "8080:8080"  #ホストのポート8080をコンテナのポート8080にマッピングする
+    tty: true  #コンテナの仮想端末を有効にする
+    volumes:
+      - ../spring_project:/srv:cached  #ローカルのディレクトリをコンテナ内のディレクトリにキャッシュ付きでマウントする
+    working_dir: /srv  #コンテナ内の作業ディレクトリを設定する
+  frontend:
+    container_name: frontend  #コンテナの名前を指定
+    build: ./vue  #DockerイメージをビルドするためのDockerfileの場所
+    ports:
+      - 9000:8080  #ホストのポート9000をコンテナのポート8080にマッピングする
+    volumes:
+      - ../vue_project:/usr/src/app:cached  #ローカルのディレクトリをコンテナ内のディレクトリにキャッシュ付きでマウントする
+    stdin_open: true  #コンテナの標準入力を開いたままにする
+    tty: true  #コンテナの仮想端末を有効にする
+volumes:
+  mysql_db:
+    driver: local  #ローカルのドライバを使用する名前付きボリュームを定義する
+                  #MySQLのデータを保持するために使用される
